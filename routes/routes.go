@@ -106,19 +106,19 @@ func SetupRoutes(
 		// Extract user info from query params or headers
 		userID := c.Query("user_id")
 		username := c.Query("username")
-		
+
 		if userID == "" || username == "" {
 			c.JSON(400, gin.H{"error": "user_id and username are required"})
 			return
 		}
-		
+
 		// Convert userID to uint
 		uid, err := strconv.ParseUint(userID, 10, 32)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "invalid user_id"})
 			return
 		}
-		
+
 		websocketService.HandleWebSocket(c.Writer, c.Request, uint(uid), username)
 	})
 }
