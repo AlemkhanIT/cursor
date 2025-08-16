@@ -10,9 +10,15 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+type EmailServiceInterface interface {
+	GenerateToken() (string, error)
+	SendEmailConfirmation(email, token string) error
+	SendPasswordReset(email, token string) error
+}
+
 type EmailService struct{}
 
-func NewEmailService() *EmailService {
+func NewEmailService() EmailServiceInterface {
 	return &EmailService{}
 }
 
@@ -54,22 +60,38 @@ func (s *EmailService) sendEmail(to, subject, body string) error {
 	username := os.Getenv("SMTP_USERNAME")
 	password := os.Getenv("SMTP_PASSWORD")
 
+	// Debug logging
+	fmt.Printf("SMTP Configuration: Host=%s, Port=%s, Username=%s\n", host, portStr, username)
+
+	if host == "" || portStr == "" || username == "" || password == "" {
+		return fmt.Errorf("missing SMTP configuration: host=%s, port=%s, username=%s, password=%s",
+			host, portStr, username, password != "")
+	}
+
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return fmt.Errorf("invalid SMTP port: %v", err)
 	}
 
 	m := gomail.NewMessage()
-	m.SetHeader("From", username)
+	// For Mailtrap, use a proper from address
+	m.SetHeader("From", "noreply@ecommerce-app.com")
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 
 	d := gomail.NewDialer(host, port, username, password)
 
+	// Mailtrap specific configuration
+	d.SSL = false
+	d.TLSConfig = nil
+
+	// Try to send the email
 	if err := d.DialAndSend(m); err != nil {
+		fmt.Printf("SMTP Error: %v\n", err)
 		return fmt.Errorf("failed to send email: %v", err)
 	}
 
+	fmt.Printf("Email sent successfully to %s\n", to)
 	return nil
 }

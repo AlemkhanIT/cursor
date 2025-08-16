@@ -16,10 +16,10 @@ import (
 
 type AuthHandler struct {
 	db           *gorm.DB
-	emailService *services.EmailService
+	emailService services.EmailServiceInterface
 }
 
-func NewAuthHandler(db *gorm.DB, emailService *services.EmailService) *AuthHandler {
+func NewAuthHandler(db *gorm.DB, emailService services.EmailServiceInterface) *AuthHandler {
 	return &AuthHandler{
 		db:           db,
 		emailService: emailService,

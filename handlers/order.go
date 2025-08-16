@@ -8,6 +8,7 @@ import (
 	"ecommerce-app/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stripe/stripe-go/v74"
 	"gorm.io/gorm"
 )
 
@@ -131,7 +132,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"order": order,
+		"order":        order,
 		"checkout_url": checkoutResp.URL,
 	})
 }
@@ -243,6 +244,25 @@ func (h *OrderHandler) ConfirmPayment(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch order"})
+		return
+	}
+
+	// Retrieve session from Stripe and verify status and amount
+	sess, err := h.paymentService.GetCheckoutSession(sessionID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or unknown session"})
+		return
+	}
+
+	// Only mark paid if session is complete and payment succeeded
+	if sess.Status != stripe.CheckoutSessionStatusComplete || sess.PaymentStatus != stripe.CheckoutSessionPaymentStatusPaid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Payment not completed"})
+		return
+	}
+
+	// Verify amount and currency
+	if sess.AmountTotal == 0 || int64(order.TotalAmount*100) != sess.AmountTotal {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Payment amount mismatch"})
 		return
 	}
 

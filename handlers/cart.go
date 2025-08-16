@@ -165,9 +165,21 @@ func (h *CartHandler) RemoveFromCart(c *gin.Context) {
 		return
 	}
 
-	// Delete cart item
+	// Verify the cart item belongs to the user's cart
+	var cartItem models.CartItem
 	if err := h.db.Joins("JOIN carts ON carts.id = cart_items.cart_id").
-		Where("cart_items.id = ? AND carts.user_id = ?", cartItemID, userID).Delete(&models.CartItem{}).Error; err != nil {
+		Where("cart_items.id = ? AND carts.user_id = ?", cartItemID, userID).
+		First(&cartItem).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Cart item not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cart item"})
+		return
+	}
+
+	// Now delete by primary key to avoid JOINs in DELETE
+	if err := h.db.Delete(&models.CartItem{}, cartItem.ID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove item from cart"})
 		return
 	}

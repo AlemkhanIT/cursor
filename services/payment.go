@@ -46,19 +46,20 @@ func (s *PaymentService) CreateCheckoutSession(req CreateCheckoutSessionRequest)
 				Quantity: stripe.Int64(1),
 			},
 		},
-		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
-		SuccessURL: stripe.String(req.SuccessURL),
-		CancelURL:  stripe.String(req.CancelURL),
+		Mode:              stripe.String(string(stripe.CheckoutSessionModePayment)),
+		SuccessURL:        stripe.String(req.SuccessURL),
+		CancelURL:         stripe.String(req.CancelURL),
+		ClientReferenceID: stripe.String(req.OrderID),
 	}
 
-	session, err := session.New(params)
+	sess, err := session.New(params)
 	if err != nil {
 		return nil, err
 	}
 
 	return &CreateCheckoutSessionResponse{
-		SessionID: session.ID,
-		URL:       session.URL,
+		SessionID: sess.ID,
+		URL:       sess.URL,
 	}, nil
 }
 
@@ -69,4 +70,8 @@ func (s *PaymentService) ConfirmPayment(paymentIntentID string) error {
 
 func (s *PaymentService) GetPaymentIntent(paymentIntentID string) (*stripe.PaymentIntent, error) {
 	return paymentintent.Get(paymentIntentID, nil)
+}
+
+func (s *PaymentService) GetCheckoutSession(sessionID string) (*stripe.CheckoutSession, error) {
+	return session.Get(sessionID, nil)
 }
